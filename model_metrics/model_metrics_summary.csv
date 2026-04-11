@@ -1,0 +1,2 @@
+model,walk_forward_avg_mae,walk_forward_avg_rmse,single_test_mae,single_test_rmse
+HistGradientBoosting,35.69011,47.597025,37.498524,50.341898
