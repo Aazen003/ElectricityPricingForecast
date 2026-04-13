@@ -188,6 +188,8 @@ hourly_df = load_hourly_profile(selected_country)
 weekday_df = load_weekday_profile(selected_country)
 monthly_df = load_monthly_profile(selected_country)
 
+pred_full_df = pred_df.copy()
+
 if not history_df.empty:
     min_date = history_df["timestamp"].dt.date.min()
     max_date = history_df["timestamp"].dt.date.max()
@@ -196,7 +198,7 @@ else:
     max_date = None
 
 date_range = st.sidebar.date_input(
-    "Historical date range",
+    "Date range",
     value=(min_date, max_date),
     min_value=min_date,
     max_value=max_date
@@ -221,33 +223,11 @@ if start_date and end_date:
         (history_df["timestamp"].dt.date <= end_date)
     ].copy()
 
-pred_display_note = None
-
-if not pred_df.empty:
-    pred_min_date = pred_df["timestamp"].dt.date.min()
-    pred_max_date = pred_df["timestamp"].dt.date.max()
-
-    overlap_start = max(start_date, pred_min_date) if start_date else pred_min_date
-    overlap_end = min(end_date, pred_max_date) if end_date else pred_max_date
-
-    if overlap_start <= overlap_end:
+    if not pred_df.empty:
         pred_df = pred_df[
-            (pred_df["timestamp"].dt.date >= overlap_start) &
-            (pred_df["timestamp"].dt.date <= overlap_end)
+            (pred_df["timestamp"].dt.date >= start_date) &
+            (pred_df["timestamp"].dt.date <= end_date)
         ].copy()
-        pred_display_note = (
-            f"Showing prediction data from {overlap_start} to {overlap_end}. "
-            f"Available prediction range for {selected_country.title()} is {pred_min_date} to {pred_max_date}."
-        )
-    else:
-        pred_df = pred_df[
-            (pred_df["timestamp"].dt.date >= pred_min_date) &
-            (pred_df["timestamp"].dt.date <= pred_max_date)
-        ].copy()
-        pred_display_note = (
-            f"Your selected historical date range has no prediction rows. "
-            f"Showing the available prediction window instead: {pred_min_date} to {pred_max_date}."
-        )
 
 if not pred_df.empty:
     if forecast_window == "Last 7 days":
@@ -348,9 +328,6 @@ with tab1:
 with tab2:
     st.subheader(f"Forecast performance - {selected_country.title()} - {selected_model}")
 
-    if pred_display_note:
-        st.caption(pred_display_note)
-
     if not pred_df.empty:
         pred_df = pred_df.sort_values("timestamp").copy()
         pred_df["rolling_abs_error_24"] = pred_df["abs_error"].rolling(24).mean()
@@ -430,7 +407,17 @@ with tab2:
                 use_container_width=True
             )
     else:
-        st.info("No prediction data is available for the selected model.")
+        if not pred_full_df.empty:
+            pred_min_date = pred_full_df["timestamp"].dt.date.min()
+            pred_max_date = pred_full_df["timestamp"].dt.date.max()
+            st.warning(
+                f"No prediction data is available for the selected date range. "
+                f"Saved prediction rows for {selected_country.title()} are only available from "
+                f"{pred_min_date} to {pred_max_date}. "
+                f"Change the sidebar date range to that period to view forecast performance."
+            )
+        else:
+            st.info("No prediction data is available for the selected model.")
 
 with tab3:
     st.subheader(f"Recurring price patterns - {selected_country.title()}")
